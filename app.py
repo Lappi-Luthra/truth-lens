@@ -6,7 +6,7 @@ import io
 
 # 1. REMOVE SPLASH SCREEN (JavaScript Hook)
 js = "document.getElementById('splash').style.opacity = '0'; setTimeout(() => document.getElementById('splash').remove(), 1000);"
-st.components.v1.html(f"<script>{js}</script>", height=0)
+st.components.v1.html(f"<script>{{ {js} }}</script>", height=0)
 
 st.set_page_config(page_title="Truth Lens Pro", layout="centered")
 
