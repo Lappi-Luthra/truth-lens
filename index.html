@@ -4,13 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
     <title>Truth Lens Pro</title>
-    
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#0d1117">
-
     <style>
-        /* FULLSCREEN SPLASH SCREEN */
         #splash {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #0d1117; display: flex; flex-direction: column;
@@ -29,7 +26,6 @@
         @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
         .loading-text { color: #00f2fe; margin-top: 20px; font-family: sans-serif; font-size: 12px; letter-spacing: 2px; }
     </style>
-
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.39.0/build/stlite.css" />
 </head>
 <body>
@@ -37,9 +33,7 @@
         <div class="scanner"></div>
         <div class="loading-text">BOOTING FORENSIC ENGINE...</div>
     </div>
-
     <div id="root"></div>
-
     <script src="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.39.0/build/stlite.js"></script>
     <script>
         stlite.mount({
@@ -50,59 +44,40 @@
 import streamlit as st
 from google import genai
 from groq import Groq
-from PIL import Image, ExifTags
+from PIL import Image
 import io
 
-# REMOVE SPLASH SCREEN
+# HIDE SPLASH SCREEN
 st.components.v1.html("""<script>
     window.parent.document.getElementById('splash').style.opacity = '0';
     setTimeout(() => window.parent.document.getElementById('splash').remove(), 1000);
 </script>""", height=0)
 
-st.set_page_config(page_title="Truth Lens", layout="centered")
+st.title("🛡️ TRUTH LENS PRO")
 
-st.markdown("<h2 style='text-align: center; color: #00f2fe;'>🛡️ TRUTH LENS PRO</h2>", unsafe_allow_html=True)
-
-# SIDEBAR FOR KEYS
 with st.sidebar:
     st.header("Settings")
     g_key = st.text_input("Gemini API Key", type="password")
     gr_key = st.text_input("Groq API Key", type="password")
-    st.info("Keys stay in your browser.")
 
-# MAIN APP
-uploaded_file = st.file_uploader("Tap to Scan Screenshot", type=['jpg', 'jpeg', 'png'])
+uploaded_file = st.file_uploader("Upload Screenshot", type=['jpg', 'jpeg', 'png'])
 
 if uploaded_file:
     img = Image.open(uploaded_file)
-    st.image(img, use_container_width=True)
-    
-    if st.button("🔍 ANALYZE FOR FRAUD"):
+    st.image(img)
+    if st.button("🔍 ANALYZE"):
         if not g_key or not gr_key:
-            st.error("Please enter API keys in the sidebar menu.")
+            st.error("Missing Keys!")
         else:
-            with st.status("Analyzing...") as status:
-                # 1. Metadata Check
-                exif = img.getexif()
-                meta = "None" if not exif else str(len(exif))
-                
-                # 2. AI Vision Audit
+            with st.status("Scanning..."):
                 client_g = genai.Client(api_key=g_key)
-                response_v = client_g.models.generate_content(
-                    model="gemini-2.0-flash", 
-                    contents=["Verify this UPI payment screenshot for editing artifacts.", img]
-                )
-                
-                # 3. Final Verdict
+                res_v = client_g.models.generate_content(model="gemini-2.0-flash", contents=["Analyze for fraud", img])
                 client_gr = Groq(api_key=gr_key)
                 verdict = client_gr.chat.completions.create(
-                    messages=[{"role": "user", "content": f"Verdict based on vision: {response_v.text}. Metadata count: {meta}"}],
+                    messages=[{"role": "user", "content": res_v.text}],
                     model="llama-3.3-70b-versatile"
                 )
-                status.update(label="Scan Complete!", state="complete")
-            
-            st.subheader("Veridct:")
-            st.write(verdict.choices[0].message.content)
+                st.write(verdict.choices[0].message.content)
 `
             }
         }, document.getElementById("root"));
