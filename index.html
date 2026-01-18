@@ -2,37 +2,23 @@
 <html>
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Truth Lens Pro</title>
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#0d1117">
     <style>
+        body { background: #0d1117; margin: 0; }
         #splash {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #0d1117; display: flex; flex-direction: column;
             align-items: center; justify-content: center; z-index: 9999;
-            transition: opacity 1s ease;
+            transition: opacity 1s; color: #00f2fe; font-family: sans-serif;
         }
-        .scanner {
-            width: 80px; height: 80px; border: 3px solid #00f2fe;
-            border-radius: 12px; position: relative; overflow: hidden;
-        }
-        .scanner::after {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px;
-            background: #00f2fe; box-shadow: 0 0 15px #00f2fe;
-            animation: scan 2s infinite linear;
-        }
-        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
-        .loading-text { color: #00f2fe; margin-top: 20px; font-family: sans-serif; font-size: 12px; letter-spacing: 2px; }
+        .loader { width: 50px; height: 50px; border: 5px solid #30363d; border-top: 5px solid #00f2fe; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.39.0/build/stlite.css" />
 </head>
 <body>
-    <div id="splash">
-        <div class="scanner"></div>
-        <div class="loading-text">BOOTING FORENSIC ENGINE...</div>
-    </div>
+    <div id="splash"><div class="loader"></div><p>STARTING ENGINE...</p></div>
     <div id="root"></div>
     <script src="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.39.0/build/stlite.js"></script>
     <script>
@@ -45,39 +31,27 @@ import streamlit as st
 from google import genai
 from groq import Groq
 from PIL import Image
-import io
 
-# HIDE SPLASH SCREEN
-st.components.v1.html("""<script>
-    window.parent.document.getElementById('splash').style.opacity = '0';
-    setTimeout(() => window.parent.document.getElementById('splash').remove(), 1000);
-</script>""", height=0)
+st.components.v1.html("<script>window.parent.document.getElementById('splash').style.opacity='0';setTimeout(()=>window.parent.document.getElementById('splash').remove(),1000);</script>", height=0)
 
 st.title("🛡️ TRUTH LENS PRO")
+g_key = st.sidebar.text_input("Gemini Key", type="password")
+gr_key = st.sidebar.text_input("Groq Key", type="password")
 
-with st.sidebar:
-    st.header("Settings")
-    g_key = st.text_input("Gemini API Key", type="password")
-    gr_key = st.text_input("Groq API Key", type="password")
-
-uploaded_file = st.file_uploader("Upload Screenshot", type=['jpg', 'jpeg', 'png'])
-
-if uploaded_file:
-    img = Image.open(uploaded_file)
+file = st.file_uploader("Upload Image", type=['jpg', 'png'])
+if file:
+    img = Image.open(file)
     st.image(img)
-    if st.button("🔍 ANALYZE"):
+    if st.button("ANALYZE"):
         if not g_key or not gr_key:
-            st.error("Missing Keys!")
+            st.error("Enter Keys!")
         else:
             with st.status("Scanning..."):
-                client_g = genai.Client(api_key=g_key)
-                res_v = client_g.models.generate_content(model="gemini-2.0-flash", contents=["Analyze for fraud", img])
-                client_gr = Groq(api_key=gr_key)
-                verdict = client_gr.chat.completions.create(
-                    messages=[{"role": "user", "content": res_v.text}],
-                    model="llama-3.3-70b-versatile"
-                )
-                st.write(verdict.choices[0].message.content)
+                c_g = genai.Client(api_key=g_key)
+                res = c_g.models.generate_content(model="gemini-2.0-flash", contents=["Is this fake?", img])
+                c_gr = Groq(api_key=gr_key)
+                v = c_gr.chat.completions.create(messages=[{"role":"user","content":res.text}], model="llama-3.3-70b-versatile")
+                st.write(v.choices[0].message.content)
 `
             }
         }, document.getElementById("root"));
