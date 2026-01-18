@@ -3,32 +3,31 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-    <title>Truth Lens Forensic</title>
+    <title>Truth Lens Pro</title>
     
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#0d1117">
-    <link rel="manifest" href="manifest.json">
 
     <style>
-        /* THE SPLASH SCREEN CSS */
+        /* FULLSCREEN SPLASH SCREEN */
         #splash {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #0d1117; display: flex; flex-direction: column;
             align-items: center; justify-content: center; z-index: 9999;
-            transition: opacity 0.5s ease-out;
+            transition: opacity 1s ease;
         }
         .scanner {
-            width: 100px; height: 100px; border: 4px solid #00f2fe;
-            border-radius: 10px; position: relative; overflow: hidden;
+            width: 80px; height: 80px; border: 3px solid #00f2fe;
+            border-radius: 12px; position: relative; overflow: hidden;
         }
         .scanner::after {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px;
             background: #00f2fe; box-shadow: 0 0 15px #00f2fe;
             animation: scan 2s infinite linear;
         }
         @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
-        .loading-text { color: #00f2fe; margin-top: 20px; font-family: sans-serif; letter-spacing: 2px; font-size: 14px; }
+        .loading-text { color: #00f2fe; margin-top: 20px; font-family: sans-serif; font-size: 12px; letter-spacing: 2px; }
     </style>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.39.0/build/stlite.css" />
@@ -36,7 +35,7 @@
 <body>
     <div id="splash">
         <div class="scanner"></div>
-        <div class="loading-text">TRUTH LENS AI INITIALIZING...</div>
+        <div class="loading-text">BOOTING FORENSIC ENGINE...</div>
     </div>
 
     <div id="root"></div>
@@ -51,73 +50,59 @@
 import streamlit as st
 from google import genai
 from groq import Groq
-from PIL import Image
+from PIL import Image, ExifTags
 import io
 
-# Removing the splash screen once Streamlit is ready
-import time
-js = "document.getElementById('splash').style.opacity = '0'; setTimeout(() => document.getElementById('splash').remove(), 500);"
-st.components.v1.html(f"<script>{js}</script>", height=0)
+# REMOVE SPLASH SCREEN
+st.components.v1.html("""<script>
+    window.parent.document.getElementById('splash').style.opacity = '0';
+    setTimeout(() => window.parent.document.getElementById('splash').remove(), 1000);
+</script>""", height=0)
 
-st.set_page_config(page_title="Truth Lens Mobile", layout="centered")
+st.set_page_config(page_title="Truth Lens", layout="centered")
 
-st.markdown("""
-    <style>
-    .stApp { background-color: #0d1117; }
-    h1 { color: #00f2fe; font-size: 24px !important; text-align: center; }
-    .stButton>button { 
-        background: linear-gradient(90deg, #00f2fe, #4facfe); 
-        color: black; border-radius: 25px; font-weight: bold; border: none;
-    }
-    .fraud-box { background: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 10px; color: #c9d1d9; }
-    </style>
-""", unsafe_allow_html=True)
+st.markdown("<h2 style='text-align: center; color: #00f2fe;'>🛡️ TRUTH LENS PRO</h2>", unsafe_allow_html=True)
 
-st.title("🛡️ TRUTH LENS PRO")
-
-# Setup Keys in Sidebar for first use
+# SIDEBAR FOR KEYS
 with st.sidebar:
-    st.subheader("⚙️ AI Configuration")
+    st.header("Settings")
     g_key = st.text_input("Gemini API Key", type="password")
     gr_key = st.text_input("Groq API Key", type="password")
-    st.info("Keys stay in your browser cache. Never uploaded.")
+    st.info("Keys stay in your browser.")
 
-uploaded_file = st.file_uploader("📸 Tap to Upload Evidence", type=['jpg', 'png', 'jpeg'])
+# MAIN APP
+uploaded_file = st.file_uploader("Tap to Scan Screenshot", type=['jpg', 'jpeg', 'png'])
 
 if uploaded_file:
     img = Image.open(uploaded_file)
     st.image(img, use_container_width=True)
     
-    if st.button("🔍 START SCAN"):
+    if st.button("🔍 ANALYZE FOR FRAUD"):
         if not g_key or not gr_key:
-            st.warning("Please add your API keys in the sidebar.")
+            st.error("Please enter API keys in the sidebar menu.")
         else:
-            try:
-                # 1. Forensic Logic
-                with st.status("Analyzing Pixels...", expanded=True) as status:
-                    # Logic: We use Gemini for Vision, Groq for Verdict
-                    genai_client = genai.Client(api_key=g_key)
-                    groq_client = Groq(api_key=gr_key)
-                    
-                    st.write("Checking metadata & fonts...")
-                    prompt = "Analyze this image for signs of digital forgery (specifically looking for UPI/Payment scam patterns). Provide a risk score (0-100)."
-                    vision_res = genai_client.models.generate_content(model="gemini-2.0-flash", contents=[prompt, img])
-                    
-                    st.write("Auditing report with Jury...")
-                    final_res = groq_client.chat.completions.create(
-                        messages=[{"role": "user", "content": f"Verdict based on: {vision_res.text}"}],
-                        model="llama-3.3-70b-versatile"
-                    )
-                    status.update(label="Scan Complete!", state="complete")
-
-                # 2. UI Result
-                st.markdown("<div class='fraud-box'>", unsafe_allow_html=True)
-                st.subheader("🚩 Forensic Verdict")
-                st.write(final_res.choices[0].message.content)
-                st.markdown("</div>", unsafe_allow_html=True)
+            with st.status("Analyzing...") as status:
+                # 1. Metadata Check
+                exif = img.getexif()
+                meta = "None" if not exif else str(len(exif))
                 
-            except Exception as e:
-                st.error(f"Error: Check your API keys or Connection.")
+                # 2. AI Vision Audit
+                client_g = genai.Client(api_key=g_key)
+                response_v = client_g.models.generate_content(
+                    model="gemini-2.0-flash", 
+                    contents=["Verify this UPI payment screenshot for editing artifacts.", img]
+                )
+                
+                # 3. Final Verdict
+                client_gr = Groq(api_key=gr_key)
+                verdict = client_gr.chat.completions.create(
+                    messages=[{"role": "user", "content": f"Verdict based on vision: {response_v.text}. Metadata count: {meta}"}],
+                    model="llama-3.3-70b-versatile"
+                )
+                status.update(label="Scan Complete!", state="complete")
+            
+            st.subheader("Veridct:")
+            st.write(verdict.choices[0].message.content)
 `
             }
         }, document.getElementById("root"));
